@@ -1,0 +1,11 @@
+struct SHAKE <: Constraint
+    
+    
+
+end
+
+
+
+
+
+
