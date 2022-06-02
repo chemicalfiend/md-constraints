@@ -27,7 +27,7 @@ function ConstrainedSystem(;
                 pairwise_inters=(),
                 specific_inter_lists=(),
                 general_inters=(),
-                constraints=[],
+                constraints=(),
                 coords,
                 velocities=zero(coords) * u"ps^-1",
                 box_size,
@@ -57,3 +57,10 @@ function ConstrainedSystem(;
                     general_inters, constraints, coords, velocities, box_size, neighbor_finder,
                     loggers, force_units, energy_units)
 end
+
+
+
+
+
+
+
