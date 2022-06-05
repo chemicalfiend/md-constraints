@@ -53,6 +53,9 @@ function apply_constraint!(sys, sim, constraint::explicit, cl::CoordinateLogger)
             if (norm(σ - σnew) <= constraint.tol)
                 
                 # TODO : Update simulation positions of all the atoms with the extra constraint step.
+                
+                
+
             end
 
             σ = σnew
