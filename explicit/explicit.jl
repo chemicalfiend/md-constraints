@@ -14,64 +14,70 @@ struct explicit{T, I, E} <: Constraint
 end
 
 
-function apply_constraint!(sys, sim, constraint::explicit, cl::CoordinateLogger)
-    
-    bondlist = [] # TODO => bondlist should be set to have a list of all pairs of bonded atoms after the initial unconstrained step has been taken. 
+function apply_constraint!(bond_list::InteractionList2Atoms, coords, masses, sim, constraint::explicit, cl::CoordinateLogger)
 
-    σ = [constraint(i, j) for (i, j) in bondlist] # TODO => set constraint vector properly
-    
-    m = length(bondlist) # Number of constraints = number of bonds
+    # Is coordinate logger needed here?
 
-    J = Matrix(I, m, m) # Jacobian
-    
+    σ = []
+    m = length(bond_list.is) # Number of constraints = number of bonds
+    J = Matrix(I, m, m) # Initialising the Jacobian
 
-
-    # TODO => write the gradi_sigma function to return the gradient for a constraint function
+    for i in 1:m
+        push!(σ, constraint(coords[bond_list.is[i]], coords[bond_list.js[i]] ) )
+    end
     
     for l in 1:constraint.maxiter
-        
-        J = [2 * norm(coord_i - coord_j) * norm((gradi_sigma/mi) - (gradj_sigma/mj))] # TODO => Set the Jacobian matrix correctly.
+        coord_i = 0
+        coord_j = 0
+        for i in 1:m
+            for j in 1:m
+                J[i][j] = 2 * norm(coords[bond_list.is[i]] - coords[bond_list.js[i]]) * norm((gradi_sigma/mi) - (gradj_sigma/mj)) # TODO : Set the Jacobian correctly!!
+            end
+        end
 
-        λ = - J \ σ
+        λ = - J \ σ      
+        
+        for i in 1:m   # TODO : Replace 'i' here with something else and change accordingly
+            coord_i = coords[bond_list.is[i]]
+            coord_j = coords[bond_list.js[i]]
+            
+            mi = masses[bond_list.is[i]]
+            mj = masses[bond_list.js[i]]
 
-        
-        
-        for (i, j) in bondlist # TODO => Write this properly after bondlist has been defined correctly.
             sumi = zeros(3)
             sumj = zeros(3)
-
             for k in 1:m
-                sumi += (sim.dt)^2 * λ[k] * (gradi_sigma/mi) 
-                sumj += (sim.dt)^2 * λ[k] * (gradj_sigma/mj)
+                sumi += (sim.dt)^2 * λ[k] * (grad_constraint(coord_i, coord_j)/mi) 
+                sumj += (sim.dt)^2 * λ[k] * (grad_constraint(coord_j, coord_i)/mj)
             end
             
             coord_i += sumi
             coord_j += sumj
-            
-            σnew = [constraint(coord_i, coord_j) for (i, j) in bondlist] # TODO => again, set constraints vector correctly.
-
-            if (norm(σ - σnew) <= constraint.tol)
-                
-                # TODO : Update simulation positions of all the atoms with the extra constraint step.
-                
-                
-
+                        
+            for k in 1:m
+                push!(σnew, constraint(coord_i, coord_j))
             end
-
-            σ = σnew
-
         end
-        
+
+
+        if (norm(σ - σnew) <= constraint.tol)           
+            coords[bond_list.is[i]] = coord_i
+            coords[bond_list.js[i]] = coord_j
+            return σnew
+        end
+
+        σ = σnew
+      
     end
 
-    
     println("Maximum Iterations Exceeded, σ did not converge")
         
 end
 
-
-function constraint(coord_i, coord_j, constraint::explicit)
-    
+function constraint(coord_i, coord_j, constraint::explicit) 
     return (norm(coord_i - coord_j)^2 - (constraint.d)^2)
-
 end 
+
+function grad_constraint(coord_i, coord_j)
+    return 2 * (coord_i - coord_j)
+end

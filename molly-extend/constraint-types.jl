@@ -1,9 +1,21 @@
 export 
     Constraint,
-    ConstrainedSystem
+    ConstrainedSystem,
+    bond_constraint,
+    angle_constraint
 
 
 abstract type Constraint end
+
+function bond_constraint(coord_i, coord_j, d)
+    return(norm(coord_i - coord_j)^2 - d^2)
+end
+
+function angle_constraint(coord_i, coord_j, coord_k, θ)
+    angle = dot((coord_k - coord_j), (coord_j, coord_i)) / (norm(coord_k - coord_j) * norm(coord_j - coord_i))
+
+    return angle - θ # TODO : CHECK THIS !!
+    
 
 mutable struct ConstrainedSystem{D, G, T, A, AD, PI, SI, GI, CN, C, V, B, NF, L, F, E} <: AbstractSystem{D} 
     atoms::A
