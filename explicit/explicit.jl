@@ -29,9 +29,9 @@ function apply_constraint!(bond_list::InteractionList2Atoms, coords, masses, sim
     for l in 1:constraint.maxiter
         coord_i = 0
         coord_j = 0
-        for i in 1:m
-            for j in 1:m
-                J[i][j] = 2 * norm(coords[bond_list.is[i]] - coords[bond_list.js[i]]) * norm((gradi_sigma/mi) - (gradj_sigma/mj)) # TODO : Set the Jacobian correctly!!
+        for u in 1:m
+            for v in 1:m
+                J[u][v] = 2 * norm(coords[bond_list.is[u]] - coords[bond_list.js[u]]) * norm( (grad_constraint(coords[bond_list.is[v], coods[bond_list.js[v])/masses[i]) - (grad_constraint(coords[bond_list.js[v], coods[bond_list.is[v])/masses[j])  )  # TODO : Check the Jacobian !!
             end
         end
 
