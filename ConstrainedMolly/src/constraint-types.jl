@@ -15,7 +15,7 @@ function angle_constraint(coord_i, coord_j, coord_k, θ)
     angle = dot((coord_k - coord_j), (coord_j, coord_i)) / (norm(coord_k - coord_j) * norm(coord_j - coord_i))
 
     return angle - θ # TODO : CHECK THIS !!
-    
+end    
 
 mutable struct ConstrainedSystem{D, G, T, A, AD, PI, SI, GI, CN, C, V, B, NF, L, F, E} <: AbstractSystem{D} 
     atoms::A
