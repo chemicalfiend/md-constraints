@@ -30,6 +30,12 @@ println("Initial : ")
 
 println(coords)
 
-apply_constraint!(bonds, coords, masses, 0.01, e)
+dt = 0.01
+
+v = [[0.1, 0.1, 0.1] for i in 1:n_atoms]
+
+new_coords = coords + (v .* dt) 
+
+apply_constraint!(bonds, coords, new_coords, masses, dt, e)
 
 

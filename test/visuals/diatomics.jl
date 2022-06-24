@@ -1,9 +1,6 @@
 using Molly
 using GLMakie
 
-
-include("visual.jl")
-
 n_atoms = 100
 atom_mass = 10.0u"u"
 atoms = [Atom(mass=atom_mass, σ=0.3u"nm", ϵ=0.2u"kJ * mol^-1") for i in 1:n_atoms]
@@ -65,7 +62,7 @@ simulator = VelocityVerlet(
 
 simulate!(sys, simulator, 1_000)
 
-visual(
+visualize(
     sys.loggers["coords"],
     box_size,
     "sim_diatomic.mp4";

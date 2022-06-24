@@ -1,7 +1,7 @@
 # Visualize simulations
 # This file is only loaded when GLMakie is imported
 
-using .GLMakie
+using GLMakie
 using LinearAlgebra
 
 function visual(coord_logger,
@@ -71,7 +71,7 @@ function visual(coord_logger,
         col = parse.(Colorant, color)
         alpha = 1 - (trail_i / (trails + 1))
         alpha_col = RGBA.(red.(col), green.(col), blue.(col), alpha)
-        scatter!(ax, trail_positions[end]; color=alpha_col,  markersize=markersize,
+        scatter!(ax, trail_positions[end]; color=alpha_col,  markersize=:data,
                     transparency=transparency, markerspace=SceneSpace, kwargs...)
     end
 

@@ -1,11 +1,22 @@
 export 
     Constraint,
+    NoConstraint,
+    apply_constraint!,
     ConstrainedSystem,
     bond_constraint,
-    angle_constraint
+    angle_constraint,
+    ConstrainedVelocityVerlet,
+    simulate!
 
 
 abstract type Constraint end
+
+struct NoConstraint <: Constraint end
+
+function apply_constraint!(coords, new_coords, sim, constr::NoConstraint)
+
+end
+
 
 function bond_constraint(coord_i, coord_j, d)
     return(norm(coord_i - coord_j)^2 - d^2)
@@ -17,20 +28,9 @@ function angle_constraint(coord_i, coord_j, coord_k, θ)
     return angle - θ # TODO : CHECK THIS !!
 end    
 
-mutable struct ConstrainedSystem{D, G, T, A, AD, PI, SI, GI, CN, C, V, B, NF, L, F, E} <: AbstractSystem{D} 
-    atoms::A
-    atoms_data::D
-    pairwise_inters::PI
-    specific_inter_lists::SI
-    general_inters::GI
+mutable struct ConstrainedSystem{S, CN}
+    sys::S
     constraints::CN     # Only new addition from System
-    coords::C
-    velocities::V
-    box_size::B
-    neighbor_finder::NF
-    loggers::L
-    force_units::F
-    energy_units::E
 end
 
 function ConstrainedSystem(;
@@ -64,15 +64,88 @@ function ConstrainedSystem(;
     L = typeof(loggers)
     F = typeof(force_units)
     E = typeof(energy_units)
-    return System{D, G, T, A, AD, PI, SI, GI, CN, C, V, B, NF, L, F, E}(
-                    atoms, atoms_data, pairwise_inters, specific_inter_lists,
-                    general_inters, constraints, coords, velocities, box_size, neighbor_finder,
-                    loggers, force_units, energy_units)
+    
+    s = System{D, G, T, A, AD, PI, SI, GI, C, V, B, NF, L, F, E}(atoms, atoms_data, pairwise_inters, specific_inter_lists, general_inters, coords, velocities, box_size, neighbor_finder, loggers, force_units, energy_units)
+    
+    S = typeof(s)
+
+    return ConstrainedSystem{S, CN}(s, constraints)
+end
+
+
+function run_constraints!(s, coords, new_coords, dt)
+    for cons in s.constraints
+        apply_constraint!(coords, new_coords, dt, cons)
+    end
+
+end
+
+
+#function remove_molar(x)
+#    fx = first(x)
+#    return ([ustrip(x[1]), ustrip(x[2]), ustrip(x[3])]u"nm *  ps^-2")
+
+#end
+
+function remove_molar(x)
+    fx = first(x)
+    if dimension(fx) == u"𝐋 * 𝐍^-1 * 𝐓^-2"
+        T = typeof(ustrip(fx))
+        return x / T(Unitful.Na)
+    else
+        return x
+    end
 end
 
 
 
+mutable struct ConstrainedVelocityVerlet{T, C} 
+    dt::T
+    coupling::C
+    remove_CM_motion::Bool
+end
 
+function ConstrainedVelocityVerlet(; dt, coupling=NoCoupling(), remove_CM_motion=true)
+    return ConstrainedVelocityVerlet(dt, coupling, remove_CM_motion)
+end
 
+function simulate!(sys,
+                    sim::ConstrainedVelocityVerlet,
+                    n_steps::Integer;
+                    parallel::Bool=true)
+    neighbors = find_neighbors(sys.sys, sys.sys.neighbor_finder; parallel=parallel)
+    run_loggers!(sys.sys, neighbors, 0; parallel=parallel)
+    accels_t = accelerations(sys.sys, neighbors; parallel=parallel)
+    accels_t_dt = zero(accels_t)
+    sim.remove_CM_motion && remove_CM_motion!(sys.sys)
 
+    for step_n in 1:n_steps
+        #sys.coords += sys.velocities .* sim.dt .+ (remove_molar.(accels_t) .* sim.dt ^ 2) ./ 2
+        #sys.coords = wrap_coords_vec.(sys.coords, (sys.box_size,))
+
+        #println(dimension(sys.sys.coords[1]))
+        #println(dimension( (sys.sys.velocities.*(sim.dt))[1]))
+        #println(dimension( (remove_molar.(accels_t).*(sim.dt^2))[1]))
+
+        
+        new_coords = sys.sys.coords + sys.sys.velocities .* sim.dt .+ (remove_molar.(accels_t) .* sim.dt ^ 2) ./ 2
+
+        new_coords = wrap_coords_vec.(new_coords, (sys.sys.box_size,))
+
+        accels_t_dt = accelerations(sys.sys, neighbors; parallel=parallel)
+
+        sys.sys.velocities += remove_molar.(accels_t .+ accels_t_dt) .* sim.dt / 2
+
+        sim.remove_CM_motion && remove_CM_motion!(sys.sys)
+        apply_coupling!(sys.sys, sim, sim.coupling)
+
+        run_constraints!(sys, sys.sys.coords, new_coords, sim.dt)
+
+        if step_n != n_steps
+            neighbors = find_neighbors(sys.sys, sys.sys.neighbor_finder, neighbors, step_n; parallel=parallel)
+            accels_t = accels_t_dt
+        end
+    end
+    return sys.sys
+end
 
