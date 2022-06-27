@@ -2,7 +2,6 @@
 
 
 using LinearAlgebra
-
 export
     explicit,
     apply_constraint!,
@@ -19,17 +18,18 @@ end
 
 #function apply_constraint!(bond_list::InteractionList2Atoms, coords, masses, sim, constraint::explicit, cl::CoordinateLogger)
 
-function apply_constraint!(coords, new_coords, dt, constr::explicit)
+function apply_constraint!(sys, coords, new_coords, dt, constr::explicit)
     
     # not sure if coordinate logger is needed. TODO : Explore better ways to send coords(t) and coords(t + dt) without CL.
 
     bond_list = constr.bond_list
+    masses = get_masses(sys)
     #coords = last(cl.coords)
     #new_coords = sys.coords
 
     σ = []
     m = length(bond_list.is) # Number of constraints = number of bonds
-    J = zeros(m, m)  # Initialising the Jacobian
+    J = zeros(m, m)u"nm^2/u * ps^2"  # Initialising the Jacobian
     
     for i in 1:m
         push!(σ, constraint(coords[bond_list.is[i]], coords[bond_list.js[i]], constr.d) )
@@ -37,18 +37,22 @@ function apply_constraint!(coords, new_coords, dt, constr::explicit)
     
     for l in 1:constr.maxiter
         coord_i = 0
-        coord_j = 0
+        coord_j = 0 
         
+        #a = unit(norm(coords[bond_list.is[0]] - coords[bond_list.js[0]]))
+        #b  = unit(grad_constraint(coords[bond_list.is[0]], 
+        
+        a = 1u"s^2"
         for u in 1:m
             for v in 1:m
-                J[u, v] = 2 * norm(coords[bond_list.is[v]] - coords[bond_list.js[v]]) * norm((grad_constraint(coords[bond_list.is[v]], coords[bond_list.js[v]], coords[bond_list.is[u]])/masses[u]) - (grad_constraint(coords[bond_list.js[v]], coords[bond_list.is[v]], coords[bond_list.js[u]])/masses[u])) # CHECK THIS.
+                J[u, v] = 2 *a* norm(coords[bond_list.is[v]] - coords[bond_list.js[v]]) * norm((grad_constraint(coords[bond_list.is[v]], coords[bond_list.js[v]], coords[bond_list.is[u]])/masses[u]) - (grad_constraint(coords[bond_list.js[v]], coords[bond_list.is[v]], coords[bond_list.js[u]])/masses[u])) # CHECK THIS.
             end
         end
         println("\n\n\n\n")
 
-        println(J)
+        #println(J)
 
-        println(σ)
+        #println(σ)
 
         λ = - J \ σ      
         
@@ -60,9 +64,10 @@ function apply_constraint!(coords, new_coords, dt, constr::explicit)
             mi = masses[bond_list.is[r]]
             mj = masses[bond_list.js[r]]
 
-            sumi = zeros(3)
-            sumj = zeros(3)
+            sumi = zeros(3)u"nm"
+            sumj = zeros(3)u"nm"
             for k in 1:m
+                #Check these::
                 sumi += (dt^2)* λ[k] * (grad_constraint(coord_i, coord_j, coord_i)/mi) 
                 sumj += (dt^2)* λ[k] * (grad_constraint(coord_i, coord_j, coord_j)/mj)
             end
@@ -72,13 +77,13 @@ function apply_constraint!(coords, new_coords, dt, constr::explicit)
             
             σnew = []
             
-            println("\n\n\n $coord_i \n $coord_j \n\n\n")
+            # println("\n\n\n $coord_i \n $coord_j \n\n\n")
 
             for k in 1:m
                 push!(σnew, constraint(coord_i, coord_j, constr.d))
             end
 
-            if (norm(σ - σnew) <= constr.tol)
+            if (sqrt(norm(σ - σnew)) <= constr.tol)
                 coords[bond_list.is[r]] = coord_i
                 coords[bond_list.js[r]] = coord_j
                 return σnew
@@ -93,7 +98,7 @@ function apply_constraint!(coords, new_coords, dt, constr::explicit)
         println("\n\n\n")
 
         println("Iteration $l")
-        println(coords)
+        #println(coords)
       
     end
 
@@ -116,7 +121,7 @@ function grad_constraint(coord_i1, coord_j1, coord_k)
         return(2*(coord_j1 - coord_i1))
 
     else
-        return 0.0
+        return 0.0u"nm"
     
     end
 

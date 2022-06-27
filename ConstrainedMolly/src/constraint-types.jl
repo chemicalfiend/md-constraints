@@ -1,4 +1,5 @@
 export 
+    get_masses,
     Constraint,
     NoConstraint,
     apply_constraint!,
@@ -11,9 +12,20 @@ export
 
 abstract type Constraint end
 
+
+function get_masses(sys)
+    
+    masses = []
+    for atom in sys.sys.atoms
+        push!(masses, atom.mass)
+    end
+    return masses
+
+end
+
 struct NoConstraint <: Constraint end
 
-function apply_constraint!(coords, new_coords, sim, constr::NoConstraint)
+function apply_constraint!(sys, coords, new_coords, sim, constr::NoConstraint)
 
 end
 
@@ -73,9 +85,9 @@ function ConstrainedSystem(;
 end
 
 
-function run_constraints!(s, coords, new_coords, dt)
-    for cons in s.constraints
-        apply_constraint!(coords, new_coords, dt, cons)
+function run_constraints!(sys, coords, new_coords, dt)
+    for cons in sys.constraints
+        apply_constraint!(sys, coords, new_coords, dt, cons)
     end
 
 end
@@ -109,7 +121,7 @@ function ConstrainedVelocityVerlet(; dt, coupling=NoCoupling(), remove_CM_motion
     return ConstrainedVelocityVerlet(dt, coupling, remove_CM_motion)
 end
 
-function simulate!(sys,
+function simulate!(sys::ConstrainedSystem,
                     sim::ConstrainedVelocityVerlet,
                     n_steps::Integer;
                     parallel::Bool=true)
