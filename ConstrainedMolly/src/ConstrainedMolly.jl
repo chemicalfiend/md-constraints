@@ -7,5 +7,7 @@ using Reexport
 @reexport using CUDA
 include("constraint-types.jl")
 include("../../explicit/explicit.jl")
+include("../../SHAKE/shake.jl")
+
 
 end
