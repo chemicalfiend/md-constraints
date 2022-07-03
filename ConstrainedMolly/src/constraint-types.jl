@@ -26,7 +26,8 @@ end
 struct NoConstraint <: Constraint end
 
 function apply_constraint!(sys, coords, new_coords, sim, constr::NoConstraint)
-
+    
+    sys.sys.coords = new_coords
 end
 
 
@@ -149,9 +150,10 @@ function simulate!(sys::ConstrainedSystem,
         sys.sys.velocities += remove_molar.(accels_t .+ accels_t_dt) .* sim.dt / 2
 
         sim.remove_CM_motion && remove_CM_motion!(sys.sys)
-        apply_coupling!(sys.sys, sim, sim.coupling)
 
         run_constraints!(sys, sys.sys.coords, new_coords, sim.dt)
+
+        apply_coupling!(sys.sys, sim, sim.coupling)
 
         if step_n != n_steps
             neighbors = find_neighbors(sys.sys, sys.sys.neighbor_finder, neighbors, step_n; parallel=parallel)
