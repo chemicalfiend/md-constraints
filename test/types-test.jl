@@ -8,7 +8,7 @@ function system_test()
     atom_mass = 10.0u"u"
     atoms = [Atom(mass=atom_mass, σ=0.3u"nm", ϵ=0.2u"kJ * mol^-1") for i in 1:n_atoms]
     
-    box_size = SVector(2.0, 2.0, 2.0)u"nm"
+    box_size = CubicBoundary(2.0u"nm", 2.0u"nm", 2.0u"nm")
     coords = place_atoms(n_atoms, box_size, 0.3u"nm")
     
     temp = 100.0u"K"
@@ -35,7 +35,7 @@ function ExplicitTest()
     atom_mass = 10.0u"u"
     atoms = [Atom(mass=atom_mass, σ=0.3u"nm", ϵ=0.2u"kJ * mol^-1") for i in 1:n_atoms]
     
-    box_size = SVector(2.0, 2.0, 2.0)u"nm"
+    box_size = CubicBoundary(2.0u"nm", 2.0u"nm", 2.0u"nm")
     coords = place_atoms(n_atoms ÷ 2, box_size, 0.3u"nm")
     
     for i in 1:length(coords)
@@ -65,7 +65,7 @@ function ExplicitTest()
                             coords=coords,
                             velocities=velocities,
                             box_size=box_size,
-                            loggers=(coords = CoordinateLogger(10),)
+                            loggers=(coords = CoordinateLogger(10), bonds = BondLogger(10, bonds.is, bonds.js))
                            )
     return sys
 

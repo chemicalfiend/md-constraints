@@ -7,7 +7,9 @@ export
     bond_constraint,
     angle_constraint,
     ConstrainedVelocityVerlet,
-    simulate!
+    simulate!,
+    BondLogger,
+    log_property!
 
 
 abstract type Constraint end
@@ -55,15 +57,16 @@ function ConstrainedSystem(;
                 constraints=(),
                 coords,
                 velocities=zero(coords) * u"ps^-1",
-                box_size,
+                boundary,
                 neighbor_finder=NoNeighborFinder(),
-                loggers=Dict(),
+                loggers=(),
                 force_units=u"kJ * mol^-1 * nm^-1",
                 energy_units=u"kJ * mol^-1",
+                k=Unitful.k,
                 gpu_diff_safe=isa(coords, CuArray))
-    D = length(box_size)
+    D = n_dimensions(boundary)
     G = gpu_diff_safe
-    T = typeof(ustrip(first(box_size)))
+    T = float_type(boundary)
     A = typeof(atoms)
     AD = typeof(atoms_data)
     PI = typeof(pairwise_inters)
@@ -72,13 +75,14 @@ function ConstrainedSystem(;
     CN = typeof(constraints)
     C = typeof(coords)
     V = typeof(velocities)
-    B = typeof(box_size)
+    B = typeof(boundary)
     NF = typeof(neighbor_finder)
     L = typeof(loggers)
     F = typeof(force_units)
     E = typeof(energy_units)
+    K = typeof(k)
     
-    s = System{D, G, T, A, AD, PI, SI, GI, C, V, B, NF, L, F, E}(atoms, atoms_data, pairwise_inters, specific_inter_lists, general_inters, coords, velocities, box_size, neighbor_finder, loggers, force_units, energy_units)
+    s = System{D, G, T, A, AD, PI, SI, GI, C, V, B, NF, L, F, E, K}(atoms, atoms_data, pairwise_inters, specific_inter_lists, general_inters, coords, velocities, boundary, neighbor_finder, loggers, force_units, energy_units, k)
     
     S = typeof(s)
 
@@ -111,6 +115,31 @@ function remove_molar(x)
 end
 
 
+struct BondLogger{T}
+    n_steps::Int
+    is::Vector{Int64}
+    js::Vector{Int64}
+    bond_lengths::Vector{T}
+end
+
+function BondLogger(n_steps::Int64, is, js)
+    return BondLogger(n_steps, is, js, [])
+
+end
+
+
+function log_property!(logger::BondLogger, s::System,neighbors=nothing, step_n::Integer=0; parallel::Bool=true)
+    if step_n % logger.n_steps == 0
+        lengths = []
+        for k in 1:length(logger.is)
+            l = norm(s.coords[logger.is[k]] - s.coords[logger.js[k]])
+            push!(lengths, l)
+        end
+        push!(logger.bond_lengths, lengths)
+    end
+end
+
+
 
 mutable struct ConstrainedVelocityVerlet{T, C} 
     dt::T
@@ -133,17 +162,11 @@ function simulate!(sys::ConstrainedSystem,
     sim.remove_CM_motion && remove_CM_motion!(sys.sys)
 
     for step_n in 1:n_steps
-        #sys.coords += sys.velocities .* sim.dt .+ (remove_molar.(accels_t) .* sim.dt ^ 2) ./ 2
-        #sys.coords = wrap_coords_vec.(sys.coords, (sys.box_size,))
-
-        #println(dimension(sys.sys.coords[1]))
-        #println(dimension( (sys.sys.velocities.*(sim.dt))[1]))
-        #println(dimension( (remove_molar.(accels_t).*(sim.dt^2))[1]))
-
-        
         new_coords = sys.sys.coords + sys.sys.velocities .* sim.dt .+ (remove_molar.(accels_t) .* sim.dt ^ 2) ./ 2
 
-        new_coords = wrap_coords_vec.(new_coords, (sys.sys.box_size,))
+        new_coords = wrap_coords.(new_coords, (sys.sys.boundary,))
+        
+        #sys.sys.coords = new_coords
 
         accels_t_dt = accelerations(sys.sys, neighbors; parallel=parallel)
 
@@ -151,9 +174,11 @@ function simulate!(sys::ConstrainedSystem,
 
         sim.remove_CM_motion && remove_CM_motion!(sys.sys)
 
+        apply_coupling!(sys.sys, sim, sim.coupling)
+
         run_constraints!(sys, sys.sys.coords, new_coords, sim.dt)
 
-        apply_coupling!(sys.sys, sim, sim.coupling)
+        run_loggers!(sys.sys, neighbors, step_n;parallel=parallel)
 
         if step_n != n_steps
             neighbors = find_neighbors(sys.sys, sys.sys.neighbor_finder, neighbors, step_n; parallel=parallel)
@@ -162,4 +187,5 @@ function simulate!(sys::ConstrainedSystem,
     end
     return sys.sys
 end
+
 

@@ -14,7 +14,12 @@ function apply_constraint!(sys, coords, new_coords, dt, constr::SHAKE)
     bond_list = constr.bond_list
     masses = get_masses(sys)
     
+    
+   # print("$masses \n")
+
     m = length(bond_list.is)
+    
+    sys.sys.coords = new_coords
 
     for r in 1:m
         # Atoms that are part of the bond
@@ -37,7 +42,9 @@ function apply_constraint!(sys, coords, new_coords, dt, constr::SHAKE)
 
         c = s2 - constr.d^2
 
-        D = b^2 - 4*a*c
+        D = (b^2 - 4*a*c)
+
+        print("a : $a \n  b : $b \n c : $c \n D : $D \n")
 
         if (ustrip(D) < 0.0)
             @warn "SHAKE determinant negative. Setting to 0.0"
@@ -57,9 +64,17 @@ function apply_constraint!(sys, coords, new_coords, dt, constr::SHAKE)
         δri0 = r01.*(g/m0)
         δri1 = r01.*(-g/m1)
         
-        sys.sys.coords[i0] = new_coords[i0] + δri0
-        sys.sys.coords[i1] = new_coords[i1] + δri1
+        sys.sys.coords[i0] += δri0
+        sys.sys.coords[i1] += δri1
     end
+end
+
+
+
+struct SHAKE3 <: Constraint
+    
+    
+
 end
 
 
