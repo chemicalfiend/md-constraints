@@ -11,7 +11,7 @@ function ShakeTest()
     coords = place_atoms(n_atoms ÷ 2, boundary, 0.3u"nm")
 
     for i in 1:length(coords)
-        push!(coords, coords[i].+ [0.2, 0.0, 0.0]u"nm")
+        push!(coords, coords[i].+ [0.15, 0.0, 0.0]u"nm")
     end
 
     temp = 100.0u"K"
@@ -42,7 +42,7 @@ function ShakeTest()
 
     sys = ConstrainedSystem(atoms=atoms,
                             pairwise_inters=(LennardJones(nl_only=true),),
-                            specific_inter_lists=specific_inter_lists,
+                            #specific_inter_lists=specific_inter_lists,
                             constraints=constraint_list,
                             coords=coords,
                             velocities=velocities,
