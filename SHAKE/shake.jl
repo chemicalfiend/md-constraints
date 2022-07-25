@@ -183,13 +183,44 @@ function apply_constraint!(sys, coords, new_coords, dt, constr::SHAKE3)
 end
 
 
-struct SHAKE4 <: Constraint
-    
-
+struct SHAKE4{D, B} <: Constraint
+    d1::D
+    d2::D
+    d3::D
+    bond_list::B
 end
 
 
 function apply_constraint!(sys, coords, new_coords, dt, constr::SHAKE4)
+    
+
+    bond_list = constr.bond_list
+    masses = get_masses(sys)
+    m = length(bond_list.is)
+    sys.sys.coords = new_coords
+    box = sys.sys.boundary
+    
+    
+    for r in 1:m
+        i0 = bond_list.is[r]
+        i1 = bond_list.js[r]
+        i2 = bond_list.ks[r]
+        i3 = bond_list.ls[r]
+        
+        r01 = vector(coords[i0], coords[i1], box)
+        r02 = vector(coords[i0], coords[i1], box)
+        r03 = vector(coords[i0], coords[i1], box)
+
+        s01 = vector(new_coords[i0], new_coords[i1], box)
+        s02 = vector(new_coords[i0], new_coords[i2], box)
+        s03 = vector(new_coords[i0], new_coords[i2], box)
+
+
+
+        
+    end 
+
+
 
 
 end
