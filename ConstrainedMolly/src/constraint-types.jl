@@ -8,7 +8,8 @@ export
     angle_constraint,
     ConstrainedVelocityVerlet,
     simulate!,
-    BondLogger,
+    bond_lengths,
+    BondLengthLogger,
     log_property!
 
 
@@ -114,7 +115,7 @@ function remove_molar(x)
     end
 end
 
-
+#=
 struct BondLogger{T}
     n_steps::Int
     is::Vector{Int64}
@@ -124,7 +125,6 @@ end
 
 function BondLogger(n_steps::Int64, is, js)
     return BondLogger(n_steps, is, js, [])
-
 end
 
 
@@ -139,7 +139,22 @@ function log_property!(logger::BondLogger, s::System,neighbors=nothing, step_n::
     end
 end
 
+=#
 
+
+function bond_lengths(sys::System, bond_list, neighbors=nothing, n_threads::Integer=Threads.nthreads())
+    
+    lengths = Vector()
+
+    for i in 1:length(bond_list.is)
+        push!(lengths, vector(sys.coords[i], sys.coords[j], sys.boundary))
+    end
+
+    return lengths
+
+end
+
+BondLengthLogger(n_steps) = GeneralObservableLogger(bond_lengths, Vector, n_steps)
 
 mutable struct ConstrainedVelocityVerlet{T, C} 
     dt::T
@@ -178,7 +193,7 @@ function simulate!(sys::ConstrainedSystem,
 
         run_constraints!(sys, sys.sys.coords, new_coords, sim.dt)
 
-        run_loggers!(sys.sys, neighbors, step_n;parallel=parallel)
+        run_loggers!(sys.sys, neighbors, step_n;n_threads=n_threads)
 
         if step_n != n_steps
             neighbors = find_neighbors(sys.sys, sys.sys.neighbor_finder, neighbors, step_n; parallel=parallel)

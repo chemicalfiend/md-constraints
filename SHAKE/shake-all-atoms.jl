@@ -7,7 +7,7 @@ export
 
 
 
-struct SHAKE{D,B,O} <: Constraint
+struct SHAKEALL{D,B,O} <: Constraint
     distances::D
     bond_list::B
     ω::O
@@ -15,12 +15,12 @@ struct SHAKE{D,B,O} <: Constraint
 end
 
 
-function SHAKE(d, b)
-    return SHAKE(d, b, 1.0, 1e10)
+function SHAKEALL(d, b)
+    return SHAKEALL(d, b, 1.0, 1e10)
 end
 
 
-function apply_constraint!(sys, coords, new_coords, dt , constr::SHAKE)
+function apply_constraint!(sys, coords, new_coords, dt , constr::SHAKEALL)
 
     bonds = constr.bond_list
     

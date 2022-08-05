@@ -51,6 +51,7 @@ function ShakeTest()
                             loggers=Dict(
                                         "temp" => TemperatureLogger(10),
                                         "coords" => CoordinateLogger(10),
+                                        "bonds" => BondLengthLogger(10),
                                        )
                            )
 
@@ -70,6 +71,7 @@ function SimulateShake(sys)
               boundary,
               "sim_diatomic.mp4";
                connections=[(i, i + (n_atoms ÷ 2)) for i in 1:(n_atoms ÷ 2)],
+               connection_frames = values(sys.sys.loggers["bonds"])
             )
 
 end

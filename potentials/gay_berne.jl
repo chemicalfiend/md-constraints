@@ -1,3 +1,7 @@
+# Gay-Berne Potential for Polyellipsoid interactions
+
+# Implementation as described in 
+
 export GayBerne
 
 
@@ -16,9 +20,29 @@ end
                                     atom_j,
                                     box_size)
     
+
+
     
 
 
 end
 
-@fastmath function force_divr_nocutoff(::GayBerne, 
+@fastmath function force_divr_nocutoff(::GayBerne) 
+
+
+
+end
+
+
+@inline @inbounds function potential_energy()
+
+end
+
+
+@fastmath function potential()
+
+
+end
+
+
+
