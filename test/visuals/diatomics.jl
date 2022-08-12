@@ -1,5 +1,6 @@
 using Molly
-using GLMakie
+#using GLMakie
+using LinearAlgebra
 
 n_atoms = 100
 atom_mass = 10.0u"u"
@@ -7,7 +8,7 @@ atoms = [Atom(mass=atom_mass, σ=0.3u"nm", ϵ=0.2u"kJ * mol^-1") for i in 1:n_at
 
 boundary = CubicBoundary(2.0u"nm", 2.0u"nm", 2.0u"nm")
 
-coords = place_atoms(n_atoms ÷ 2, boundary, 0.3u"nm")
+coords = place_atoms(n_atoms ÷ 2, boundary, min_dist=0.3u"nm")
 for i in 1:length(coords)
     push!(coords, coords[i] .+ [0.1, 0.0, 0.0]u"nm")
 end
@@ -20,7 +21,7 @@ bonds = InteractionList2Atoms(
     collect(1:(n_atoms ÷ 2)),           # First atom indices
     collect((1 + n_atoms ÷ 2):n_atoms), # Second atom indices
     repeat([""], n_atoms ÷ 2),          # Bond types
-    [HarmonicBond(b0=0.1u"nm", kb=300_000.0u"kJ * mol^-1 * nm^-2") for i in 1:(n_atoms ÷ 2)],
+    [HarmonicBond(k=300_000.0u"kJ * mol^-1 * nm^-2", r0=0.1u"nm") for i in 1:(n_atoms ÷ 2)],
 )
 
 specific_inter_lists = (bonds,)
@@ -60,9 +61,19 @@ simulator = VelocityVerlet(
 
 simulate!(sys, simulator, 1_000)
 
+bond_lengths = []
+for r in 1:length(bonds.is)
+    push!(bond_lengths, norm(vector(sys.coords[bonds.is[r]], sys.coords[bonds.js[r]], sys.boundary)))
+end
+    
+print(bond_lengths)
+
+
+#=
 visualize(
     sys.loggers["coords"],
     boundary,
     "sim_diatomic.mp4";
     connections=[(i, i + (n_atoms ÷ 2)) for i in 1:(n_atoms ÷ 2)],
 )
+=#

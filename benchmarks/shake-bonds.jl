@@ -1,9 +1,7 @@
 using Molly
-#using GLMakie
+using BenchmarkTools
 
-using LinearAlgebra
-
-function ShakeTest()
+function shake_benchmark()
     n_atoms = 100
     atom_mass = 10.0u"u"
     atoms = [Atom(mass=atom_mass, σ=0.3u"nm", ϵ=0.2u"kJ * mol^-1") for i in 1:n_atoms]
@@ -41,9 +39,8 @@ function ShakeTest()
     
     constraint_list = (sh,)
 
-    sys = System(atoms=atoms,
+    constrained_sys = System(atoms=atoms,
                  pairwise_inters=(LennardJones(nl_only=true),),
-                            #specific_inter_lists=specific_inter_lists,
                             constraints=constraint_list,
                             coords=coords,
                             velocities=velocities,
@@ -53,38 +50,34 @@ function ShakeTest()
                                          "temp" => TemperatureLogger(10),
                                          "coords" => CoordinateLogger(10),
                                         )
-                           )
-    #n_atoms = 100
-    #temp = 100.0u"K"
-    #boundary = CubicBoundary(2.0u"nm", 2.0u"nm", 2.0u"nm")
+                           )  
     
+    
+
+    unconstrained_sys = System(atoms=atoms,
+                 pairwise_inters=(LennardJones(nl_only=true),),
+                            coords=coords,
+                            velocities=velocities,
+                            boundary=boundary,
+                            neighbor_finder=neighbor_finder,
+                            loggers=Dict(
+                                         "temp" => TemperatureLogger(10),
+                                         "coords" => CoordinateLogger(10),
+                                        )
+                           )  
+
 
     simulator = VelocityVerlet(dt=0.002u"ps", coupling=AndersenThermostat(temp, 1.0u"ps"),)
+    
+    println("BENCHMARKS FOR CONSTRAINED SIMULATION : ")
 
-    simulate!(sys, simulator, 1_000)
-    
-    bond_lengths = []
-    for r in 1:length(bonds.is)
-        push!(bond_lengths, norm(vector(sys.coords[bonds.is[r]], sys.coords[bonds.js[r]], sys.boundary)))
-    end
-    
-    print(bond_lengths.-0.1u"nm")
-    
-    if abs(maximum(bond_lengths.-0.1u"nm")) < 1e-7u"nm"
-        println("\n SUCCESS!")
-    else
-        println("\n FAILED :(")
-    end
+    @btime simulate!($constrained_sys, $simulator, 1_000)
+
+    println("BENCHMARKS FOR UNCONSTRAINED SIMULATION : ")
+
+    @btime simulate!($unconstrained_sys, $simulator, 1_000)
 
 
-    #=
-    visualize(sys.loggers["coords"],
-              boundary,
-              "sim_diatomic.mp4";
-               connections=[(i, i + (n_atoms ÷ 2)) for i in 1:(n_atoms ÷ 2)],
-               connection_frames = values(sys.loggers["bonds"])
-            )
-    =#
 end
 
-ShakeTest()
+shake_benchmark()
