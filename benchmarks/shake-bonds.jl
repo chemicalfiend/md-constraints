@@ -16,15 +16,6 @@ function shake_benchmark()
     temp = 100.0u"K"
 
     velocities = [velocity(atom_mass, temp) for i in 1:n_atoms]
-    
-    bonds = InteractionList2Atoms(
-        collect(1:(n_atoms÷2)),
-        collect((1+n_atoms÷2):n_atoms),
-        repeat([""], n_atoms÷2),
-        [],
-       )
-    
-    specific_inter_lists = (bonds,)
 
     nb_matrix = trues(n_atoms, n_atoms)
 
@@ -34,8 +25,10 @@ function shake_benchmark()
     end
 
     neighbor_finder = DistanceNeighborFinder(nb_matrix=nb_matrix, n_steps=10, dist_cutoff=1.5u"nm")
+    
+    bond_lengths = [0.1u"nm" for i in 1:(n_atoms÷2)]
 
-    sh = SHAKE(0.1u"nm", bonds)
+    sh = SHAKE(bond_lengths, collect(1:(n_atoms÷2)), collect((1+n_atoms÷2):n_atoms))
     
     constraint_list = (sh,)
 

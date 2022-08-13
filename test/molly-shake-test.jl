@@ -18,15 +18,14 @@ function ShakeTest()
     temp = 100.0u"K"
 
     velocities = [velocity(atom_mass, temp) for i in 1:n_atoms]
-    
+    #=
     bonds = InteractionList2Atoms(
         collect(1:(n_atoms÷2)),
         collect((1+n_atoms÷2):n_atoms),
         repeat([""], n_atoms÷2),
         [],
        )
-    
-    specific_inter_lists = (bonds,)
+    =#
 
     nb_matrix = trues(n_atoms, n_atoms)
 
@@ -36,14 +35,16 @@ function ShakeTest()
     end
 
     neighbor_finder = DistanceNeighborFinder(nb_matrix=nb_matrix, n_steps=10, dist_cutoff=1.5u"nm")
+    
+    bond_lengths = [0.1u"nm" for i in 1:(n_atoms÷2)]
 
-    sh = SHAKE(0.1u"nm", bonds)
+    sh = SHAKE(bond_lengths, collect(1:(n_atoms÷2)), collect((1+n_atoms÷2):n_atoms))
     
     constraint_list = (sh,)
 
     sys = System(atoms=atoms,
                  pairwise_inters=(LennardJones(nl_only=true),),
-                            #specific_inter_lists=specific_inter_lists,
+
                             constraints=constraint_list,
                             coords=coords,
                             velocities=velocities,
@@ -58,19 +59,44 @@ function ShakeTest()
     #temp = 100.0u"K"
     #boundary = CubicBoundary(2.0u"nm", 2.0u"nm", 2.0u"nm")
     
+    for i in 1:length(sys.coords)
+        sys.coords[i] += [rand()*0.01, rand()*0.01, rand()*0.01]u"nm"
+    end
+    
+    old_coords = sys.coords
+
+    apply_constraint!(sys, sh, old_coords, 0.002u"ps")
+
+    lengths = []
+    for r in 1:length(sh.is)
+        push!(lengths, norm(vector(sys.coords[sh.is[r]], sys.coords[sh.js[r]], sys.boundary)))
+    end
+    
+    println("TEST 1 : \n")
+
+    print(lengths.-0.1u"nm")
+    
+    if abs(maximum(lengths.-0.1u"nm")) < 1e-7u"nm"
+        println("\n SUCCESS!")
+    else
+        println("\n FAILED :(")
+    end
+
 
     simulator = VelocityVerlet(dt=0.002u"ps", coupling=AndersenThermostat(temp, 1.0u"ps"),)
 
     simulate!(sys, simulator, 1_000)
     
-    bond_lengths = []
-    for r in 1:length(bonds.is)
-        push!(bond_lengths, norm(vector(sys.coords[bonds.is[r]], sys.coords[bonds.js[r]], sys.boundary)))
+    lengths = []
+    for r in 1:length(sh.is)
+        push!(lengths, norm(vector(sys.coords[sh.is[r]], sys.coords[sh.js[r]], sys.boundary)))
     end
     
-    print(bond_lengths.-0.1u"nm")
+    println("TEST 2 \n")
+
+    print(lengths.-0.1u"nm")
     
-    if abs(maximum(bond_lengths.-0.1u"nm")) < 1e-7u"nm"
+    if abs(maximum(lengths.-0.1u"nm")) < 1e-7u"nm"
         println("\n SUCCESS!")
     else
         println("\n FAILED :(")
