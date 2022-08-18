@@ -65,7 +65,7 @@ function ShakeTest()
     
     old_coords = sys.coords
 
-    apply_constraint!(sys, sh, old_coords, 0.002u"ps")
+    apply_constraints!(sys, sh, old_coords, 0.002u"ps")
 
     lengths = []
     for r in 1:length(sh.is)
