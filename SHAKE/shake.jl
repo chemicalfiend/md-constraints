@@ -1,3 +1,12 @@
+#=
+
+This is an outdated implementation. See shake-all-atoms.jl
+
+translation of lammps shake implementations to Julia.
+
+=#
+
+
 export
     SHAKE,
     apply_constraint!
