@@ -43,8 +43,10 @@ function CO2_shake()
     bond_lengths = [0.1u"nm" for i in 1:2*(n_atoms÷3)]
     
     sh = SHAKE(bond_lengths, [collect(1:n_atoms÷3)..., collect((1+(n_atoms÷3)):2*(n_atoms÷3))...], [collect((1+(n_atoms÷3)):(2*n_atoms÷3))..., collect((1+(2*n_atoms÷3)):n_atoms)...])
-    
-    constraints=(sh,)
+    rat = RATTLE(bond_lengths, [collect(1:n_atoms÷3)..., collect((1+(n_atoms÷3)):2*(n_atoms÷3))...], [collect((1+(n_atoms÷3)):(2*n_atoms÷3))..., collect((1+(2*n_atoms÷3)):n_atoms)...])
+   
+
+    constraints=(sh,rat,)
 
 sys = System(atoms=atoms,
              pairwise_inters=(LennardJones(nl_only=true),),
@@ -65,14 +67,17 @@ sys = System(atoms=atoms,
     old_coords = sys.coords
 
     apply_constraints!(sys, sh, old_coords, 0.002u"ps")
-    
+    apply_constraints!(sys, rat, old_coords, 0.002u"ps")
     lengths = []
+    vpset = []
 
     for r in 1:length(sh.is)
         push!(lengths, norm(vector(sys.coords[sh.is[r]], sys.coords[sh.js[r]], sys.boundary)))
+        push!(vpset, dot(sys.velocities[rat.is[r]] -sys.velocities[rat.js[r]], vector(sys.coords[rat.is[r]], sys.coords[rat.js[r]], sys.boundary)))    
     end
 
     print(lengths.-0.1u"nm")
+    print(vpset)
 
 end
 
